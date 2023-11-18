@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<svg version="1.1" xmlns:cc="http://creativecommons.org/ns#" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" viewBox="0 0 200 200" xml:space="preserve">
+<defs>
+<filter id="blur" x="0%" y="0%" width="100%" height="100%">
+  <feGaussianBlur in="SourceGraphic" stdDeviation="20" />
+</filter>
+
+<clipPath id="clip">
+<path fill="#020550" d="m54.455 40v120h91.09v-120zm31.09 16.863h25.697l25.01 85.355h-21.912l-7.6855-22.486h-16.63l-7.5723 22.486h-21.913z" />
+</clipPath>
+</defs>
+
+<g filter="url(#blur)" clip-path="url(#clip)">
+<rect width="100" height="100" x="0" y="0" fill="#f04445" />
+<rect width="100" height="100" x="100" y="0" fill="#c27277" />
+<rect width="100" height="100" x="100" y="100" fill="#95a1aa" />
+<rect width="100" height="100" x="0" y="100" fill="#68d0dd" />
+</g>
+</svg>
