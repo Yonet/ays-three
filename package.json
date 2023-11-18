@@ -14,6 +14,7 @@
     "vite": "^5.0.0"
   },
   "dependencies": {
+    "is-mobile": "^4.0.0",
     "simplex-noise": "^4.0.1",
     "three": "^0.158.0",
     "three-fatline": "^0.6.1"

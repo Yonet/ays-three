@@ -18,3 +18,49 @@ html {
 
 	background: rgb(24, 22, 20);
 }
+
+canvas {
+	position: fixed;
+	outline: none;
+	left: 0;
+	top: 0;
+}
+
+img {
+	pointer-events: none;
+	max-height: 40px;
+	max-width: 40px;
+	width: 100%;
+}
+
+a {
+	display: inline-block;
+	font-size: 1.1em;
+	cursor: pointer;
+	color: #ea8462;
+}
+
+.ui {
+	transition: opacity 2s ease-in-out;
+	opacity: 1 !important;
+	z-index: 1;
+
+	.watermark-container {
+		color: #fff;
+		position: absolute;
+		text-align: center;
+		font-size: 1.1em;
+		width: 100%;
+		left: 0;
+		top: 3%;
+	}
+
+	.button-container {
+		flex-direction: column;
+		position: absolute;
+		display: flex;
+		bottom: 5%;
+		left: 5%;
+		gap: 12px;
+	}
+}
