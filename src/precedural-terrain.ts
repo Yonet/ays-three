@@ -4,6 +4,7 @@ import { OrbitControls, RGBELoader } from 'three/examples/jsm/Addons.js';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 
 const textureLoader = new TextureLoader();
+
 const maxHexHeight = 10;
 const stoneHeight = maxHexHeight * 0.8;
 const dirtHeight = maxHexHeight * 0.7;
@@ -17,6 +18,7 @@ let grassGeo: any = new BoxGeometry( 0, 0, 0 );
 let sandGeo: any = new BoxGeometry( 0, 0, 0 );
 let stoneGeo: any = new BoxGeometry( 0, 0, 0 );
 
+// Scene
 const scene = new Scene();
 scene.background = new Color( "#FFEECC" );
 
@@ -50,16 +52,6 @@ let envTexture = await new RGBELoader().setDataType( FloatType ).loadAsync( '/pu
 let pmRem = new PMREMGenerator( renderer );
 let envmap = pmRem.fromEquirectangular( envTexture ).texture;
 
-// let sphereMesh = new Mesh(
-//     new SphereGeometry( 5, 10, 10 ),
-//     new MeshStandardMaterial( {
-//         envMap: envmap,
-//         roughness: 0,
-//         metalness: 1,
-//     } ) );
-
-// scene.add( sphereMesh );
-
 const textures = [
     await textureLoader.loadAsync( '/public/dirt.png' ),
     await textureLoader.loadAsync( '/public/dirt2.jpg' ),
@@ -82,14 +74,6 @@ for ( let i = -10; i <= 10; i++ ) {
     }
 }
 
-// let hexagonMesh = new Mesh(
-//     hexagonGeometries,
-//     new MeshStandardMaterial( {
-//         envMap: envmap,
-//         flatShading: true,
-//     } ) );
-// scene.add( hexagonMesh );
-
 let dirtMesh = createHexMesh( dirtGeo, textures[0] );
 let dirt2Mesh = createHexMesh( dirt2Geo, textures[1] );
 let grassMesh = createHexMesh( grassGeo, textures[2] );
@@ -104,7 +88,7 @@ let seaMesh = new Mesh(
         ior: 1.4,
         transmission: 1,
         transparent: true,
-        thickness: 1.5,
+        thickness: 1.3,
         envMapIntensity: 0.2,
         roughness: 1,
         metalness: 0.025,

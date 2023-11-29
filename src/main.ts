@@ -1,260 +1,313 @@
-import { createNoise2D } from 'simplex-noise';
-import { ACESFilmicToneMapping, BoxGeometry, Color, CylinderGeometry, DoubleSide, FloatType, Mesh, MeshPhysicalMaterial, MeshStandardMaterial, PCFSoftShadowMap, PMREMGenerator, PerspectiveCamera, PointLight, SRGBColorSpace, Scene, SphereGeometry, TextureLoader, Vector2, WebGLRenderer } from 'three';
-import { OrbitControls, RGBELoader } from 'three/examples/jsm/Addons.js';
-import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
+import * as THREE from 'three';
 
-const textureLoader = new TextureLoader();
-const maxHexHeight = 10;
-const stoneHeight = maxHexHeight * 0.8;
-const dirtHeight = maxHexHeight * 0.7;
-const grassHeight = maxHexHeight * 0.5;
-const sandHeight = maxHexHeight * 0.3;
-const dirt2Height = maxHexHeight * 0;
+import Stats from 'three/addons/libs/stats.module.js';
+import { GUI } from 'three/addons/libs/lil-gui.module.min.js';
 
-let dirtGeo: any = new BoxGeometry( 0, 0, 0 );
-let dirt2Geo: any = new BoxGeometry( 0, 0, 0 );
-let grassGeo: any = new BoxGeometry( 0, 0, 0 );
-let sandGeo: any = new BoxGeometry( 0, 0, 0 );
-let stoneGeo: any = new BoxGeometry( 0, 0, 0 );
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
-const scene = new Scene();
-scene.background = new Color( "#FFEECC" );
+let group;
+let container, stats;
+const particlesData = [];
+let camera, scene, renderer;
+let positions, colors;
+let particles;
+let pointCloud;
+let particlePositions;
+let linesMesh;
 
-const camera = new PerspectiveCamera( 45, window.innerWidth / window.innerHeight, 0.1, 1000 );
-camera.position.set( -17, 31, 33 );
+const maxParticleCount = 1000;
+let particleCount = 500;
+const r = 800;
+const rHalf = r / 2;
 
-const renderer = new WebGLRenderer( { antialias: true } );
-renderer.setSize( window.innerWidth, window.innerHeight );
-renderer.toneMapping = ACESFilmicToneMapping;
-renderer.shadowMap.enabled = true;
-renderer.shadowMap.type = PCFSoftShadowMap;
-document.body.appendChild( renderer.domElement );
-
-// Lights
-const pointLight = new PointLight( new Color( "#FFCB8E" ).convertSRGBToLinear().convertSRGBToLinear(), 500 * Math.PI, 200 );
-pointLight.position.set( 10, 20, 10 );
-pointLight.castShadow = true;
-pointLight.shadow.mapSize.width = 512 * Math.PI;
-pointLight.shadow.mapSize.height = 512 * Math.PI;
-pointLight.shadow.camera.near = 0.5;
-pointLight.shadow.camera.far = 500;
-scene.add( pointLight );
-
-// Controls
-const controls = new OrbitControls( camera, renderer.domElement );
-controls.target.set( 0, 0, 0 );
-controls.dampingFactor = 0.05;
-controls.enableDamping = true;
-
-let envTexture = await new RGBELoader().setDataType( FloatType ).loadAsync( '/public/envmap.hdr' );
-let pmRem = new PMREMGenerator( renderer );
-let envmap = pmRem.fromEquirectangular( envTexture ).texture;
-
-// let sphereMesh = new Mesh(
-//     new SphereGeometry( 5, 10, 10 ),
-//     new MeshStandardMaterial( {
-//         envMap: envmap,
-//         roughness: 0,
-//         metalness: 1,
-//     } ) );
-
-// scene.add( sphereMesh );
-
-const textures = [
-    await textureLoader.loadAsync( '/public/dirt.png' ),
-    await textureLoader.loadAsync( '/public/dirt2.jpg' ),
-    await textureLoader.loadAsync( '/public/grass.jpg' ),
-    await textureLoader.loadAsync( '/public/sand.jpg' ),
-    await textureLoader.loadAsync( '/public/stone.png' ),
-    await textureLoader.loadAsync( '/public/water.jpg' ),
-];
-
-// Create Hexagons
-const noise2D = createNoise2D();
-
-for ( let i = -10; i <= 10; i++ ) {
-    for ( let j = -10; j <= 10; j++ ) {
-        let pos = tileToPosition( i, j );
-        if ( pos.length() > 16 ) continue;
-
-        let noise = ( noise2D( i * 0.1, j * 0.1 ) + 1 ) * 0.5;
-        createHex( noise * maxHexHeight, pos );
-    }
-}
-
-// let hexagonMesh = new Mesh(
-//     hexagonGeometries,
-//     new MeshStandardMaterial( {
-//         envMap: envmap,
-//         flatShading: true,
-//     } ) );
-// scene.add( hexagonMesh );
-
-let dirtMesh = createHexMesh( dirtGeo, textures[0] );
-let dirt2Mesh = createHexMesh( dirt2Geo, textures[1] );
-let grassMesh = createHexMesh( grassGeo, textures[2] );
-let sandMesh = createHexMesh( sandGeo, textures[3] );
-let stoneMesh = createHexMesh( stoneGeo, textures[4] );
-
-let seaMesh = new Mesh(
-    new CylinderGeometry( 17, 17, maxHexHeight * 0.2, 50 ),
-    new MeshPhysicalMaterial( {
-        envMap: envmap,
-        color: new Color( "#55aaff" ).convertSRGBToLinear().multiplyScalar( 3 ),
-        ior: 1.4,
-        transmission: 1,
-        transparent: true,
-        thickness: 1.5,
-        envMapIntensity: 0.2,
-        roughness: 1,
-        metalness: 0.025,
-        roughnessMap: textures[5],
-        metalnessMap: textures[5],
-    } )
-);
-seaMesh.receiveShadow = true;
-seaMesh.position.y = maxHexHeight * 0.1;
-
-let mapContainer = new Mesh(
-    new CylinderGeometry( 17.1, 17.1, maxHexHeight * 0.25, 50, 1, true ),
-    new MeshPhysicalMaterial( {
-        envMap: envmap,
-        map: textures[0],
-        envMapIntensity: 0.2,
-        side: DoubleSide
-    } )
-);
-
-let mapFloor = new Mesh(
-    new CylinderGeometry( 18.5, 18.5, maxHexHeight * 0.1, 50 ),
-    new MeshPhysicalMaterial( {
-        envMap: envmap,
-        map: textures[1],
-        envMapIntensity: 0.1,
-        side: DoubleSide
-    } )
-);
-
-scene.add( dirtMesh, dirt2Mesh, grassMesh, sandMesh, stoneMesh, seaMesh, mapContainer, mapFloor );
-
-clouds();
-
-function animate () {
-    requestAnimationFrame( animate );
-
-    controls.update();
-    renderer.render( scene, camera );
-}
-animate();
-
-function createHexGeometry ( height: number, position: Vector2 ) {
-
-    let geo = new CylinderGeometry( 1, 1, height, 6, 1, false );
-    geo.translate( position.x, height * 0.5, position.y );
-    return geo;
-}
-
-function createHex ( height: number, position: Vector2 ) {
-    let geo = createHexGeometry( height, position );
-    if ( height > stoneHeight ) {
-        stoneGeo = mergeGeometries( [stoneGeo, geo] );
-        if ( Math.random() > 0.6 ) {
-            stoneGeo = mergeGeometries( [stoneGeo, createStone( height, position )] );
-        }
-    } else if ( height > dirtHeight ) {
-        dirtGeo = mergeGeometries( [dirtGeo, geo] );
-        if ( Math.random() > 0.8 ) {
-            grassGeo = mergeGeometries( [grassGeo, tree( height, position )] );
-        }
-    } else if ( height > grassHeight ) {
-        grassGeo = mergeGeometries( [grassGeo, geo] );
-    } else if ( height > sandHeight ) {
-        sandGeo = mergeGeometries( [sandGeo, geo] );
-        if ( Math.random() > 0.6 ) {
-            stoneGeo = mergeGeometries( [stoneGeo, createStone( height, position )] );
-        }
-    } else if ( height > dirt2Height ) {
-        dirt2Geo = mergeGeometries( [dirt2Geo, geo] );
-    }
-}
-
-function tileToPosition ( x, y ) {
-    // creates the alternating grid pattern
-    return new Vector2( ( x + ( y % 2 ) * 0.5 ) * 1.77, y * 1.535 );
-}
-
-function createHexMesh ( geo, map ) {
-    let mat = new MeshPhysicalMaterial( {
-        envMap: envmap,
-        envMapIntensity: 0.135,
-        flatShading: true,
-        map
-    } );
-
-    let mesh = new Mesh( geo, mat );
-    mesh.castShadow = true;
-    mesh.receiveShadow = true;
-    return mesh;
+const effectController = {
+    showDots: true,
+    showLines: true,
+    minDistance: 150,
+    limitConnections: false,
+    maxConnections: 20,
+    particleCount: 500
 };
 
-function createStone ( height, position ) {
-    const px = Math.random() * 0.4;
-    const pz = Math.random() * 0.4;
+init();
+animate();
 
-    const geo = new SphereGeometry( Math.random() * 0.3 + 0.1, 7, 7 );
-    geo.translate( position.x + px, height, position.y + pz );
+function initGUI () {
 
-    return geo;
+    const gui = new GUI();
+
+    gui.add( effectController, 'showDots' ).onChange( function ( value ) {
+
+        pointCloud.visible = value;
+
+    } );
+    gui.add( effectController, 'showLines' ).onChange( function ( value ) {
+
+        linesMesh.visible = value;
+
+    } );
+    gui.add( effectController, 'minDistance', 10, 300 );
+    gui.add( effectController, 'limitConnections' );
+    gui.add( effectController, 'maxConnections', 0, 30, 1 );
+    gui.add( effectController, 'particleCount', 0, maxParticleCount, 1 ).onChange( function ( value ) {
+
+        particleCount = value;
+        particles.setDrawRange( 0, particleCount );
+
+    } );
+
 }
 
-function clouds () {
-    let geo: any = new SphereGeometry( 0, 0, 0 );
-    let count = Math.floor( Math.pow( Math.random(), 0.45 ) * 10 );
+function init () {
 
-    for ( let i = 0; i < count; i++ ) {
-        const puff1 = new SphereGeometry( 1.2, 7, 7 );
-        const puff2 = new SphereGeometry( 1.5, 7, 7 );
-        const puff3 = new SphereGeometry( 0.9, 7, 7 );
+    initGUI();
 
-        puff1.translate( -1.85, Math.random() * 0.3, 0 );
-        puff2.translate( 0, Math.random() * 0.3, 0 );
-        puff3.translate( 1.85, Math.random() * 0.3, 0 );
+    container = document.getElementById( 'app' );
 
-        const cloudGeo = mergeGeometries( [puff1, puff2, puff3] );
-        cloudGeo.translate(
-            Math.random() * 20 - 10,
-            Math.random() * 7 + 7,
-            Math.random() * 20 - 10
-        );
-        cloudGeo.rotateY( Math.random() * Math.PI * 2 );
-        geo = mergeGeometries( [geo, cloudGeo] );
+    camera = new THREE.PerspectiveCamera( 45, window.innerWidth / window.innerHeight, 1, 4000 );
+    camera.position.z = 1750;
+
+    const controls = new OrbitControls( camera, container );
+    controls.minDistance = 1000;
+    controls.maxDistance = 3000;
+
+    scene = new THREE.Scene();
+
+
+    group = new THREE.Group();
+    scene.add( group );
+
+    const helper = new THREE.BoxHelper( new THREE.Mesh( new THREE.BoxGeometry( r, r, r ) ) );
+    helper.material.color.setHex( 0x474790 );
+    helper.material.blending = THREE.AdditiveBlending;
+    helper.material.transparent = true;
+    group.add( helper );
+
+    const segments = maxParticleCount * maxParticleCount;//1000000
+
+    positions = new Float32Array( segments * 3 );
+    colors = new Float32Array( segments * 3 );
+
+    // Vertex Colors
+    const color = new THREE.Color();
+    const arrayBuffer = new ArrayBuffer( particles * 16 );
+
+    // the following typed arrays share the same buffer
+    const interleavedFloat32Buffer = new Float32Array( arrayBuffer );
+    const interleavedUint8Buffer = new Uint8Array( arrayBuffer );
+
+    const interleavedBuffer8 = new THREE.InterleavedBuffer( interleavedUint8Buffer, 16 );
+    const n = 800, n2 = n / 2; // particles spread in the cube
+
+    for ( let i = 0; i < interleavedFloat32Buffer.length; i += 4 ) {
+
+        // position (first 12 bytes)
+
+        const x = Math.random() * n - n2;
+        const y = Math.random() * n - n2;
+        const z = Math.random() * n - n2;
+
+        interleavedFloat32Buffer[i + 0] = x;
+        interleavedFloat32Buffer[i + 1] = y;
+        interleavedFloat32Buffer[i + 2] = z;
+
+        // color (last 4 bytes)
+
+        const vx = ( x / n ) + 0.5;
+        const vy = ( y / n ) + 0.5;
+        const vz = ( z / n ) + 0.5;
+
+        color.setRGB( vx, vy, vz, THREE.SRGBColorSpace );
+
+        const j = ( i + 3 ) * 4;
+
+        interleavedUint8Buffer[j + 0] = color.r * 255;
+        interleavedUint8Buffer[j + 1] = color.g * 255;
+        interleavedUint8Buffer[j + 2] = color.b * 255;
+        interleavedUint8Buffer[j + 3] = 0; // not needed
+
     }
 
-    const mesh = new Mesh(
-        geo,
-        new MeshStandardMaterial( {
-            envMap: envmap,
-            envMapIntensity: 0.75,
-            flatShading: true,
-            transparent: true,
-            opacity: 0.85,
-        } )
-    );
+    /////////////////////////
 
-    scene.add( mesh );
+    particles = new THREE.BufferGeometry();
+    particlePositions = new Float32Array( maxParticleCount * 3 );
+    // const particleColors = new Float32Array( maxParticleCount * 3 );
+
+    for ( let i = 0; i < maxParticleCount; i++ ) {
+
+        const x = Math.random() * r - r / 2;
+        const y = Math.random() * r - r / 2;
+        const z = Math.random() * r - r / 2;
+        // console.log( 'x,y,z', x, y, z );
+        particlePositions[i * 3] = x;
+        particlePositions[i * 3 + 1] = y;
+        particlePositions[i * 3 + 2] = z;
+        // console.log( 'particlePositions', particlePositions );
+        // add it to the geometry
+        particlesData.push( {
+            velocity: new THREE.Vector3( - 1 + Math.random() * 2, - 1 + Math.random() * 2, - 1 + Math.random() * 2 ),
+            numConnections: 0
+        } );
+
+        colors[i * 3] = ( ( x / r ) + 0.5 );
+        colors[i * 3 + 1] = ( ( y / r ) + 0.5 );
+        colors[i * 3 + 2] = ( ( z / r ) + 0.5 );
+
+    }
+    particles.setDrawRange( 0, particleCount );
+    particles.setAttribute( 'position', new THREE.BufferAttribute( particlePositions, 3 ).setUsage( THREE.DynamicDrawUsage ) );
+    particles.setAttribute( 'color', new THREE.InterleavedBufferAttribute( interleavedBuffer8, 3, 12, true ) );
+
+
+    const pMaterial = new THREE.PointsMaterial( {
+        color: 0xFccFFF,
+        size: 15,
+        blending: THREE.AdditiveBlending,
+        transparent: true,
+        // vertexColors: true
+    } );
+
+    // create the particle system
+    pointCloud = new THREE.Points( particles, pMaterial );
+    group.add( pointCloud );
+
+    const geometry = new THREE.BufferGeometry();
+
+    geometry.setAttribute( 'position', new THREE.BufferAttribute( positions, 3 ).setUsage( THREE.DynamicDrawUsage ) );
+    geometry.setAttribute( 'color', new THREE.BufferAttribute( colors, 3 ).setUsage( THREE.DynamicDrawUsage ) );
+    // geometry.setAttribute( 'color', new THREE.InterleavedBufferAttribute( interleavedBuffer8, 3, 12, true ) );
+    geometry.computeBoundingSphere();
+
+    geometry.setDrawRange( 0, 0 );
+
+    const material = new THREE.LineBasicMaterial( {
+        vertexColors: true,
+        blending: THREE.AdditiveBlending,
+        transparent: true
+    } );
+
+    linesMesh = new THREE.LineSegments( geometry, material );
+    group.add( linesMesh );
+
+    //
+
+    renderer = new THREE.WebGLRenderer( { antialias: true } );
+    renderer.setPixelRatio( window.devicePixelRatio );
+    renderer.setSize( window.innerWidth, window.innerHeight );
+
+    container.appendChild( renderer.domElement );
+
+    //
+
+    stats = new Stats();
+    container.appendChild( stats.dom );
+
+    window.addEventListener( 'resize', onWindowResize );
+
 }
 
-function tree ( height, position ) {
-    const treeHeight = Math.random() * 1 + 1.25;
+function onWindowResize () {
 
-    const geo = new CylinderGeometry( 0, 1.5, treeHeight, 3 );
-    geo.translate( position.x, height + treeHeight * 0 + 1, position.y );
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
 
-    const geo2 = new CylinderGeometry( 0, 1.15, treeHeight, 3 );
-    geo2.translate( position.x, height + treeHeight * 0.6 + 1, position.y );
+    renderer.setSize( window.innerWidth, window.innerHeight );
 
-    const geo3 = new CylinderGeometry( 0, 0.8, treeHeight, 3 );
-    geo3.translate( position.x, height + treeHeight * 1.25 + 1, position.y );
+}
 
-    return mergeGeometries( [geo, geo2, geo3] );
+function animate () {
+
+    let vertexpos = 0;
+    let colorpos = 0;
+    let numConnected = 0;
+
+    for ( let i = 0; i < particleCount; i++ )
+        particlesData[i].numConnections = 0;
+
+    for ( let i = 0; i < particleCount; i++ ) {
+
+        // get the particle
+        const particleData = particlesData[i];
+
+        particlePositions[i * 3] += particleData.velocity.x;
+        particlePositions[i * 3 + 1] += particleData.velocity.y;
+        particlePositions[i * 3 + 2] += particleData.velocity.z;
+
+        if ( particlePositions[i * 3 + 1] < - rHalf || particlePositions[i * 3 + 1] > rHalf )
+            particleData.velocity.y = - particleData.velocity.y;
+
+        if ( particlePositions[i * 3] < - rHalf || particlePositions[i * 3] > rHalf )
+            particleData.velocity.x = - particleData.velocity.x;
+
+        if ( particlePositions[i * 3 + 2] < - rHalf || particlePositions[i * 3 + 2] > rHalf )
+            particleData.velocity.z = - particleData.velocity.z;
+
+        if ( effectController.limitConnections && particleData.numConnections >= effectController.maxConnections )
+            continue;
+
+        // Check collision
+        for ( let j = i + 1; j < particleCount; j++ ) {
+
+            const particleDataB = particlesData[j];
+            if ( effectController.limitConnections && particleDataB.numConnections >= effectController.maxConnections )
+                continue;
+
+            const dx = particlePositions[i * 3] - particlePositions[j * 3];
+            const dy = particlePositions[i * 3 + 1] - particlePositions[j * 3 + 1];
+            const dz = particlePositions[i * 3 + 2] - particlePositions[j * 3 + 2];
+            const dist = Math.sqrt( dx * dx + dy * dy + dz * dz );
+
+            if ( dist < effectController.minDistance ) {
+
+                particleData.numConnections++;
+                particleDataB.numConnections++;
+
+                const alpha = 1.0 - dist / effectController.minDistance;
+
+                positions[vertexpos++] = particlePositions[i * 3];
+                positions[vertexpos++] = particlePositions[i * 3 + 1];
+                positions[vertexpos++] = particlePositions[i * 3 + 2];
+
+                positions[vertexpos++] = particlePositions[j * 3];
+                positions[vertexpos++] = particlePositions[j * 3 + 1];
+                positions[vertexpos++] = particlePositions[j * 3 + 2];
+
+                colors[colorpos++] = alpha;
+                colors[colorpos++] = alpha;
+                colors[colorpos++] = alpha;
+
+                colors[colorpos++] = alpha;
+                colors[colorpos++] = alpha;
+                colors[colorpos++] = alpha;
+
+                numConnected++;
+
+            }
+
+        }
+
+    }
+
+
+    linesMesh.geometry.setDrawRange( 0, numConnected * 2 );
+    linesMesh.geometry.attributes.position.needsUpdate = true;
+    linesMesh.geometry.attributes.color.needsUpdate = true;
+
+    pointCloud.geometry.attributes.position.needsUpdate = true;
+
+    requestAnimationFrame( animate );
+
+    stats.update();
+    render();
+
+}
+
+function render () {
+
+    const time = Date.now() * 0.001;
+
+    group.rotation.y = time * 0.1;
+    renderer.render( scene, camera );
+
 }

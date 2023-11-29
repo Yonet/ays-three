@@ -15,6 +15,8 @@
   },
   "dependencies": {
     "@three.ez/main": "^0.4.5",
+    "@tweenjs/tween.js": "^21.0.0",
+    "detect-gpu": "^5.0.37",
     "is-mobile": "^4.0.0",
     "simplex-noise": "^4.0.1",
     "three": "^0.158.0",
